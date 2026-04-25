@@ -1,174 +1,214 @@
-import gsap from "gsap";
-import { useGSAP } from "@gsap/react";
-import { ScrollTrigger } from "gsap/all";
-import { TiLocationArrow } from "react-icons/ti";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from 'react'
+import { gsap, ScrollTrigger } from '../lib/gsap'
+import { useImageSequence } from '../hooks/useImageSequence'
 
-import Button from "./Button";
-import VideoPreview from "./VideoPreview";
+const TOTAL = 34
+const FF    = "'Plus Jakarta Sans', system-ui, sans-serif"
 
-gsap.registerPlugin(ScrollTrigger);
+export function Hero() {
+  const sectionRef = useRef(null)
+  const canvasRef  = useRef(null)
+  const textRef    = useRef(null)
+  const ctaRef     = useRef(null)
+  const loaderRef  = useRef(null)
+  const frameIdx   = useRef(0)
+  const stRef      = useRef(null)
 
-const Hero = () => {
-  const [currentIndex, setCurrentIndex] = useState(1);
-  const [hasClicked, setHasClicked] = useState(false);
+  const { drawFrame, loaded, ready } = useImageSequence({
+    basePath: '/sequence/frame-',
+    ext:      'png',
+    total:    TOTAL,
+    digits:   5,
+  })
 
-  const [loading, setLoading] = useState(true);
-  const [loadedVideos, setLoadedVideos] = useState(0);
+  // store drawFrame in ref so the scroll closure always gets the latest version
+  const drawFrameRef = useRef(drawFrame)
+  useEffect(() => { drawFrameRef.current = drawFrame }, [drawFrame])
 
-  const totalVideos = 4;
-  const nextVdRef = useRef(null);
+  function sizeCanvas() {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const w   = window.innerWidth
+    const h   = window.innerHeight
+    canvas.width  = w * dpr
+    canvas.height = h * dpr
+    canvas.style.width  = w + 'px'
+    canvas.style.height = h + 'px'
+    const ctx = canvas.getContext('2d')
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)   // reset scale correctly every time
+  }
 
-  const handleVideoLoad = () => {
-    setLoadedVideos((prev) => prev + 1);
-  };
+  function paintFrame(i) {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    drawFrameRef.current(ctx, i, window.innerWidth, window.innerHeight)
+    frameIdx.current = i
+  }
 
+  /* ── ONE-TIME setup — scroll + entrance ── */
   useEffect(() => {
-    if (loadedVideos === totalVideos - 1) {
-      setLoading(false);
-    }
-  }, [loadedVideos]);
+    const section = sectionRef.current
 
-  const handleMiniVdClick = () => {
-    setHasClicked(true);
+    sizeCanvas()
+    paintFrame(0)
 
-    setCurrentIndex((prevIndex) => (prevIndex % totalVideos) + 1);
-  };
+    // Entrance animation
+    const lines = textRef.current?.querySelectorAll('.h-line') || []
+    gsap.set(lines,          { yPercent: 110, opacity: 0 })
+    gsap.set(ctaRef.current, { opacity: 0, y: 16 })
+    const intro = gsap.timeline({ delay: 0.5 })
+    intro
+      .to(lines,          { yPercent: 0, opacity: 1, stagger: 0.1, duration: 1.1, ease: 'power4.out' })
+      .to(ctaRef.current, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, '-=0.5')
 
-  useGSAP(
-    () => {
-      if (hasClicked) {
-        gsap.set("#next-video", { visibility: "visible" });
-        gsap.to("#next-video", {
-          transformOrigin: "center center",
-          scale: 1,
-          width: "100%",
-          height: "100%",
-          duration: 1,
-          ease: "power1.inOut",
-          onStart: () => nextVdRef.current.play(),
-        });
-        gsap.from("#current-video", {
-          transformOrigin: "center center",
-          scale: 0,
-          duration: 1.5,
-          ease: "power1.inOut",
-        });
-      }
-    },
-    {
-      dependencies: [currentIndex],
-      revertOnUpdate: true,
-    }
-  );
+    // Scroll-scrubbed canvas
+    stRef.current = ScrollTrigger.create({
+      trigger: section,
+      start:   'top top',
+      end:     '+=300%',
+      pin:     true,
+      anticipatePin: 1,
+      scrub:   true,
+      onUpdate(self) {
+        const p   = self.progress
+        const idx = Math.min(Math.round(p * (TOTAL - 1)), TOTAL - 1)
+        if (idx !== frameIdx.current) paintFrame(idx)
 
-  useGSAP(() => {
-    gsap.set("#video-frame", {
-      clipPath: "polygon(14% 0, 72% 0, 88% 90%, 0 95%)",
-      borderRadius: "0% 0% 40% 10%",
-    });
-    gsap.from("#video-frame", {
-      clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
-      borderRadius: "0% 0% 0% 0%",
-      ease: "power1.inOut",
-      scrollTrigger: {
-        trigger: "#video-frame",
-        start: "center center",
-        end: "bottom center",
-        scrub: true,
+        const alpha = p < 0.20 ? 1 - p / 0.20 : 0
+        if (textRef.current) textRef.current.style.opacity = alpha
+        if (ctaRef.current)  ctaRef.current.style.opacity  = alpha
       },
-    });
-  });
+    })
 
-  const getVideoSrc = (index) => `videos/hero-${index}.mp4`;
+    const onResize = () => { sizeCanvas(); paintFrame(frameIdx.current) }
+    window.addEventListener('resize', onResize)
+
+    return () => {
+      intro.kill()
+      stRef.current?.kill()
+      window.removeEventListener('resize', onResize)
+    }
+  }, [])  // run once — drawFrameRef keeps latest fn
+
+  /* ── Hide loader when ready ── */
+  useEffect(() => {
+    if (!ready || !loaderRef.current) return
+    sizeCanvas()
+    paintFrame(frameIdx.current)
+    gsap.to(loaderRef.current, {
+      opacity: 0, duration: 0.5,
+      onComplete: () => { if (loaderRef.current) loaderRef.current.style.display = 'none' },
+    })
+    stRef.current?.refresh()
+  }, [ready])
+
+  const pct = Math.round((loaded / TOTAL) * 100)
 
   return (
-    <div className="relative h-dvh w-screen overflow-x-hidden">
-      {loading && (
-        <div className="flex-center absolute z-[100] h-dvh w-screen overflow-hidden bg-violet-50">
-          {/* https://uiverse.io/G4b413l/tidy-walrus-92 */}
-          <div className="three-body">
-            <div className="three-body__dot"></div>
-            <div className="three-body__dot"></div>
-            <div className="three-body__dot"></div>
-          </div>
+    <section ref={sectionRef} id="story" style={{
+      position: 'relative', width: '100vw', height: '100dvh',
+      overflow: 'hidden', background: '#F0E8D8',
+    }}>
+
+      <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, display: 'block' }} />
+
+      {/* Loading overlay */}
+      <div ref={loaderRef} style={{
+        position: 'absolute', inset: 0, zIndex: 50,
+        background: 'var(--cream)',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 24,
+      }}>
+        <img src="/logo.svg" alt="Nidhi Seeds" style={{ height: 56, opacity: 0.7 }} />
+        <div style={{ width: 200, height: 1, background: 'rgba(20,16,8,0.1)' }}>
+          <div style={{
+            height: '100%', background: 'var(--green)',
+            width: `${pct}%`, transition: 'width 0.15s linear',
+          }} />
         </div>
-      )}
+        <p style={{
+          fontFamily: FF, fontSize: '0.62rem', fontWeight: 500,
+          letterSpacing: '0.22em', textTransform: 'uppercase',
+          color: 'rgba(20,16,8,0.35)',
+        }}>{pct}%</p>
+      </div>
 
-      <div
-        id="video-frame"
-        className="relative z-10 h-dvh w-screen overflow-hidden rounded-lg bg-blue-75"
-      >
-        <div>
-          <div className="mask-clip-path absolute-center absolute z-50 size-64 cursor-pointer overflow-hidden rounded-lg">
-            <VideoPreview>
-              <div
-                onClick={handleMiniVdClick}
-                className="origin-center scale-50 opacity-0 transition-all duration-500 ease-in hover:scale-100 hover:opacity-100"
-              >
-                <video
-                  ref={nextVdRef}
-                  src={getVideoSrc((currentIndex % totalVideos) + 1)}
-                  loop
-                  muted
-                  id="current-video"
-                  className="size-64 origin-center scale-150 object-cover object-center"
-                  onLoadedData={handleVideoLoad}
-                />
-              </div>
-            </VideoPreview>
-          </div>
+      {/* Gradient overlay */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2,
+        background: 'linear-gradient(to top, rgba(20,16,8,0.65) 0%, rgba(20,16,8,0.1) 45%, transparent 70%)',
+      }} />
 
-          <video
-            ref={nextVdRef}
-            src={getVideoSrc(currentIndex)}
-            loop
-            muted
-            id="next-video"
-            className="absolute-center invisible absolute z-20 size-64 object-cover object-center"
-            onLoadedData={handleVideoLoad}
-          />
-          <video
-            src={getVideoSrc(
-              currentIndex === totalVideos - 1 ? 1 : currentIndex
-            )}
-            autoPlay
-            loop
-            muted
-            className="absolute left-0 top-0 size-full object-cover object-center"
-            onLoadedData={handleVideoLoad}
-          />
-        </div>
-
-        <h1 className="special-font hero-heading absolute bottom-5 right-5 z-40 text-blue-75">
-          G<b>A</b>MING
+      {/* Centred headline */}
+      <div ref={textRef} style={{
+        position: 'absolute', top: '50%', left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 10, textAlign: 'center', width: '90vw',
+      }}>
+        <h1 style={{ margin: 0 }}>
+          {['Every Meal', 'Begins With', 'a Seed.'].map((line, i) => (
+            <div key={i} style={{ overflow: 'hidden' }}>
+              <span className="h-line" style={{
+                display: 'block', fontFamily: FF,
+                fontSize: 'clamp(3.2rem, 8.5vw, 11rem)',
+                fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 0.95,
+                color: i < 2 ? '#F5EFE4' : '#86C49C', willChange: 'transform',
+              }}>{line}</span>
+            </div>
+          ))}
         </h1>
-
-        <div className="absolute left-0 top-0 z-40 size-full">
-          <div className="mt-24 px-5 sm:px-10">
-            <h1 className="special-font hero-heading text-blue-100">
-              redefi<b>n</b>e
-            </h1>
-
-            <p className="mb-5 max-w-64 font-robert-regular text-blue-100">
-              Enter the Metagame Layer <br /> Unleash the Play Economy
-            </p>
-
-            <Button
-              id="watch-trailer"
-              title="Watch trailer"
-              leftIcon={<TiLocationArrow />}
-              containerClass="bg-yellow-300 flex-center gap-1"
-            />
-          </div>
+        <div style={{ marginTop: 'clamp(12px, 2vw, 24px)', display: 'flex', justifyContent: 'center' }}>
+          <span style={{
+            fontFamily: FF, fontSize: 'clamp(0.6rem, 0.85vw, 0.75rem)',
+            fontWeight: 400, letterSpacing: '0.3em', textTransform: 'uppercase',
+            color: 'rgba(245,239,228,0.55)',
+          }}>Seed It.&nbsp;&nbsp;&nbsp;Grow It.&nbsp;&nbsp;&nbsp;Eat It.</span>
         </div>
       </div>
 
-      <h1 className="special-font hero-heading absolute bottom-5 right-5 text-black">
-        G<b>A</b>MING
-      </h1>
-    </div>
-  );
-};
+      {/* CTAs */}
+      <div ref={ctaRef} style={{
+        position: 'absolute', bottom: 'clamp(40px, 7vh, 80px)',
+        left: '50%', transform: 'translateX(-50%)',
+        display: 'flex', gap: 12, zIndex: 10,
+      }}>
+        <a href="http://nidhiseed.com" target="_blank" rel="noopener noreferrer" style={{
+          padding: '13px 30px', borderRadius: 999, background: '#2D6A4F',
+          color: '#F5EFE4', fontFamily: FF, fontSize: '0.72rem', fontWeight: 700,
+          letterSpacing: '0.12em', textTransform: 'uppercase', textDecoration: 'none',
+          transition: 'background 0.2s, transform 0.2s',
+        }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#1B4332'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#2D6A4F'; e.currentTarget.style.transform = 'none' }}
+        >Start Growing →</a>
+        <a href="#seeds" style={{
+          padding: '13px 30px', borderRadius: 999,
+          border: '1px solid rgba(245,239,228,0.25)',
+          background: 'rgba(245,239,228,0.06)', backdropFilter: 'blur(12px)',
+          color: 'rgba(245,239,228,0.8)', fontFamily: FF, fontSize: '0.72rem',
+          fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase',
+          textDecoration: 'none', transition: 'background 0.2s',
+        }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,239,228,0.14)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(245,239,228,0.06)' }}
+        >Find What to Grow</a>
+      </div>
 
-export default Hero;
+      {/* Scroll nudge */}
+      <div style={{
+        position: 'absolute', bottom: 16, left: '50%',
+        transform: 'translateX(-50%)', zIndex: 10,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, opacity: 0.45,
+      }}>
+        <p style={{
+          fontFamily: FF, fontSize: '0.54rem', fontWeight: 500,
+          letterSpacing: '0.26em', textTransform: 'uppercase',
+          color: 'rgba(245,239,228,0.7)', margin: 0,
+        }}>scroll</p>
+        <div style={{ width: 1, height: 28, background: 'linear-gradient(to bottom, rgba(245,239,228,0.5), transparent)' }} />
+      </div>
+    </section>
+  )
+}

@@ -1,127 +1,183 @@
-import clsx from "clsx";
-import gsap from "gsap";
-import { useWindowScroll } from "react-use";
-import { useEffect, useRef, useState } from "react";
-import { TiLocationArrow } from "react-icons/ti";
+import { useState, useRef, useEffect } from 'react'
+import { gsap } from '../lib/gsap'
 
-import Button from "./Button";
+function Hamburger({ open, onClick }) {
+  const lineStyle = {
+    display: 'block',
+    width: '100%',
+    height: 1.2,
+    borderRadius: 999,
+    background: '#2A1F14',
+    transition: 'transform 0.3s ease, opacity 0.3s ease',
+  }
+  return (
+    <button
+      onClick={onClick}
+      aria-label={open ? 'Close menu' : 'Open menu'}
+      style={{
+        width: 36, height: 36,
+        display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6,
+        background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0,
+      }}
+    >
+      <span style={{ ...lineStyle, transformOrigin: 'center', transform: open ? 'translateY(7.2px) rotate(45deg)' : 'none' }} />
+      <span style={{ ...lineStyle, width: '65%', opacity: open ? 0 : 1 }} />
+      <span style={{ ...lineStyle, transformOrigin: 'center', transform: open ? 'translateY(-7.2px) rotate(-45deg)' : 'none' }} />
+    </button>
+  )
+}
 
-const navItems = ["Nexus", "Vault", "Prologue", "About", "Contact"];
+const MENU_ITEMS = [
+  { label: 'Story',   href: '#story'   },
+  { label: 'Seeds',   href: '#seeds'   },
+  { label: 'Why Us',  href: '#why'     },
+  { label: 'Guides',  href: '#guides'  },
+  { label: 'Contact', href: '#contact' },
+]
 
-const NavBar = () => {
-  // State for toggling audio and visual indicator
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const [isIndicatorActive, setIsIndicatorActive] = useState(false);
+export function Navbar() {
+  const [open,     setOpen]     = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const drawerRef = useRef(null)
+  const itemsRef  = useRef([])
 
-  // Refs for audio and navigation container
-  const audioElementRef = useRef(null);
-  const navContainerRef = useRef(null);
-
-  const { y: currentScrollY } = useWindowScroll();
-  const [isNavVisible, setIsNavVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
-
-  // Toggle audio and visual indicator
-  const toggleAudioIndicator = () => {
-    setIsAudioPlaying((prev) => !prev);
-    setIsIndicatorActive((prev) => !prev);
-  };
-
-  // Manage audio playback
+  /* Go cream only after the hero pin fully ends (+=400% scroll) */
   useEffect(() => {
-    if (isAudioPlaying) {
-      audioElementRef.current.play();
+    function onScroll() {
+      setScrolled(window.scrollY > window.innerHeight * 4.2)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  /* Animate drawer */
+  useEffect(() => {
+    const drawer = drawerRef.current
+    if (!drawer) return
+    if (open) {
+      gsap.to(drawer, { y: 0, opacity: 1, duration: 0.45, ease: 'power3.out' })
+      gsap.fromTo(
+        itemsRef.current.filter(Boolean),
+        { opacity: 0, y: 18 },
+        { opacity: 1, y: 0, stagger: 0.06, delay: 0.12, duration: 0.4, ease: 'power2.out' },
+      )
     } else {
-      audioElementRef.current.pause();
+      gsap.to(drawer, { y: -12, opacity: 0, duration: 0.3, ease: 'power2.in' })
     }
-  }, [isAudioPlaying]);
-
-  useEffect(() => {
-    if (currentScrollY === 0) {
-      // Topmost position: show navbar without floating-nav
-      setIsNavVisible(true);
-      navContainerRef.current.classList.remove("floating-nav");
-    } else if (currentScrollY > lastScrollY) {
-      // Scrolling down: hide navbar and apply floating-nav
-      setIsNavVisible(false);
-      navContainerRef.current.classList.add("floating-nav");
-    } else if (currentScrollY < lastScrollY) {
-      // Scrolling up: show navbar with floating-nav
-      setIsNavVisible(true);
-      navContainerRef.current.classList.add("floating-nav");
-    }
-
-    setLastScrollY(currentScrollY);
-  }, [currentScrollY, lastScrollY]);
-
-  useEffect(() => {
-    gsap.to(navContainerRef.current, {
-      y: isNavVisible ? 0 : -100,
-      opacity: isNavVisible ? 1 : 0,
-      duration: 0.2,
-    });
-  }, [isNavVisible]);
+  }, [open])
 
   return (
-    <div
-      ref={navContainerRef}
-      className="fixed inset-x-0 top-4 z-50 h-16 border-none transition-all duration-700 sm:inset-x-6"
-    >
-      <header className="absolute top-1/2 w-full -translate-y-1/2">
-        <nav className="flex size-full items-center justify-between p-4">
-          {/* Logo and Product button */}
-          <div className="flex items-center gap-7">
-            <img src="/img/logo.png" alt="logo" className="w-10" />
+    <>
+      {/* ── Bar ── */}
+      <header
+        style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0,
+          height: 96,
+          background: scrolled || open ? '#F4EEE3' : 'transparent',
+          borderBottom: scrolled || open ? '1px solid rgba(42,31,20,0.07)' : 'none',
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 clamp(20px, 4vw, 52px)',
+          transition: 'background 0.4s ease, border-color 0.4s ease',
+        }}
+      >
+        {/* Left — hamburger */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+          <Hamburger open={open} onClick={() => setOpen(v => !v)} />
+        </div>
 
-            <Button
-              id="product-button"
-              title="Products"
-              rightIcon={<TiLocationArrow />}
-              containerClass="bg-blue-50 md:flex hidden items-center justify-center gap-1"
-            />
-          </div>
+        {/* Centre — logo */}
+        <a
+          href="/"
+          style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', lineHeight: 0 }}
+        >
+          <img
+            src="/logo.svg"
+            alt="Nidhi Seeds"
+            draggable={false}
+            style={{ height: 78, width: 'auto', display: 'block' }}
+          />
+        </a>
 
-          {/* Navigation Links and Audio Button */}
-          <div className="flex h-full items-center">
-            <div className="hidden md:block">
-              {navItems.map((item, index) => (
-                <a
-                  key={index}
-                  href={`#${item.toLowerCase()}`}
-                  className="nav-hover-btn"
-                >
-                  {item}
-                </a>
-              ))}
-            </div>
-
-            <button
-              onClick={toggleAudioIndicator}
-              className="ml-10 flex items-center space-x-0.5"
-            >
-              <audio
-                ref={audioElementRef}
-                className="hidden"
-                src="/audio/loop.mp3"
-                loop
-              />
-              {[1, 2, 3, 4].map((bar) => (
-                <div
-                  key={bar}
-                  className={clsx("indicator-line", {
-                    active: isIndicatorActive,
-                  })}
-                  style={{
-                    animationDelay: `${bar * 0.1}s`,
-                  }}
-                />
-              ))}
-            </button>
-          </div>
-        </nav>
+        {/* Right — Contact Us */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+          <a
+            href="#contact"
+            style={{
+              padding: '10px 22px',
+              borderRadius: 999,
+              border: '1px solid rgba(42,31,20,0.28)',
+              color: '#2A1F14',
+              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+              fontSize: '0.72rem',
+              fontWeight: 500,
+              letterSpacing: '0.07em',
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(42,31,20,0.07)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+          >
+            Contact Us
+          </a>
+        </div>
       </header>
-    </div>
-  );
-};
 
-export default NavBar;
+      {/* ── Drawer ── */}
+      <div
+        ref={drawerRef}
+        style={{
+          position: 'fixed',
+          top: 96, left: 0, right: 0,
+          background: '#F4EEE3',
+          borderBottom: '1px solid rgba(42,31,20,0.07)',
+          padding: '28px clamp(20px, 4vw, 52px) 36px',
+          zIndex: 99,
+          opacity: 0,
+          transform: 'translateY(-12px)',
+          pointerEvents: open ? 'auto' : 'none',
+        }}
+      >
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {MENU_ITEMS.map((item, i) => (
+            <a
+              key={item.label}
+              href={item.href}
+              ref={el => (itemsRef.current[i] = el)}
+              onClick={() => setOpen(false)}
+              style={{
+                fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+                fontSize: 'clamp(2rem, 5vw, 3.5rem)',
+                fontWeight: 600,
+                letterSpacing: '-0.025em',
+                color: '#2A1F14',
+                textDecoration: 'none',
+                lineHeight: 1.15,
+                display: 'block',
+                padding: '6px 0',
+                borderBottom: '1px solid rgba(42,31,20,0.06)',
+                transition: 'color 0.2s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#2D6A4F' }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#2A1F14' }}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+      </div>
+
+      {/* Backdrop */}
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 98 }}
+          aria-hidden
+        />
+      )}
+    </>
+  )
+}

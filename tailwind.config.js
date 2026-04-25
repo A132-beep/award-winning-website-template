@@ -4,29 +4,43 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        zentry: ["zentry", "sans-serif"],
-        general: ["general", "sans-serif"],
-        "circular-web": ["circular-web", "sans-serif"],
-        "robert-medium": ["robert-medium", "sans-serif"],
-        "robert-regular": ["robert-regular", "sans-serif"],
+        // Plus Jakarta Sans — geometric premium sans (Blauer Nue alternative)
+        sans:    ["'Plus Jakarta Sans'", "system-ui", "sans-serif"],
+        jakarta: ["'Plus Jakarta Sans'", "system-ui", "sans-serif"],
+        // Legacy aliases — all map to Jakarta now
+        zentry:          ["'Plus Jakarta Sans'", "system-ui", "sans-serif"],
+        general:         ["'Plus Jakarta Sans'", "system-ui", "sans-serif"],
+        "circular-web":  ["'Plus Jakarta Sans'", "system-ui", "sans-serif"],
+        "robert-medium": ["'Plus Jakarta Sans'", "system-ui", "sans-serif"],
+        "robert-regular":["'Plus Jakarta Sans'", "system-ui", "sans-serif"],
       },
       colors: {
-        blue: {
-          50: "#DFDFF0",
-          75: "#dfdff2",
-          100: "#F0F2FA",
-          200: "#010101",
-          300: "#4FB7DD",
+        cream: {
+          50:  "#FAF8F3",
+          100: "#F5F0E8",
+          200: "#EDE4D0",
+          300: "#DDD0B8",
         },
-        violet: {
-          300: "#5724ff",
+        soil: {
+          100: "#8B7355",
+          200: "#4A3728",
+          300: "#2E1B0E",
+          400: "#1A0F06",
         },
-        yellow: {
-          100: "#8e983f",
-          300: "#edff66",
+        leaf: {
+          100: "#A8D5BA",
+          200: "#52B788",
+          300: "#2D6A4F",
+          400: "#1B4332",
+        },
+        bark: {
+          100: "#E8CFA0",
+          200: "#C8A96E",
+          300: "#8B6340",
+          400: "#4A3020",
         },
       },
     },
   },
   plugins: [],
-};
+}
