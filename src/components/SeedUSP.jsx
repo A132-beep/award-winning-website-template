@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { gsap, ScrollTrigger } from '../lib/gsap'
+import { ScrollTrigger } from '../lib/gsap'
 
 const SLIDES = [
   {
@@ -25,6 +25,8 @@ const SLIDES = [
   },
 ]
 
+const FF = "'Plus Jakarta Sans', system-ui, sans-serif"
+
 function eio(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t }
 function remap(p, a, b) {
   if (p <= a) return 0
@@ -38,6 +40,7 @@ export function SeedUSP() {
   const leftRefs   = useRef([null, null, null])
   const rightRefs  = useRef([null, null, null])
   const lineRef    = useRef(null)
+  const dotRefs    = useRef([null, null, null])
 
   useEffect(() => {
     const video = videoRef.current
@@ -81,7 +84,6 @@ export function SeedUSP() {
           const inEnd    = ra + slotSize * 0.28
           const outStart = rb - slotSize * 0.22
 
-          // Slide 0 is pre-entered — no fade-in needed, starts visible at p=0
           const entering = i === 0 ? 1 : remap(p, ra, inEnd)
           const leaving  = remap(p, outStart, rb)
           const alpha    = entering * (1 - leaving)
@@ -91,17 +93,20 @@ export function SeedUSP() {
 
           const lEl = leftRefs.current[i]
           const rEl = rightRefs.current[i]
-
           if (lEl) { lEl.style.opacity = String(alpha); lEl.style.transform = `translateY(${yL}px)` }
           if (rEl) { rEl.style.opacity = String(alpha); rEl.style.transform = `translateY(${yR}px)` }
+
+          const dot = dotRefs.current[i]
+          if (dot) {
+            dot.style.width      = alpha > 0.5 ? '20px' : '6px'
+            dot.style.background = alpha > 0.5 ? 'rgba(20,16,8,0.55)' : 'rgba(20,16,8,0.18)'
+          }
         })
       },
     })
 
     return () => video.removeEventListener('canplay', onReady)
   }, [])
-
-  const FF = "'Plus Jakarta Sans', system-ui, sans-serif"
 
   return (
     <section ref={sectionRef} style={{
@@ -110,191 +115,176 @@ export function SeedUSP() {
       height:     '100dvh',
       background: 'var(--cream)',
       overflow:   'hidden',
-      display:    'flex',
-      alignItems: 'center',
     }}>
 
-      {/* Grid: stretch so left/right columns inherit the row height */}
+      {/* ── Full-screen seed video ── */}
+      {/* objectFit:contain → portrait video fills full height, cream sides match page */}
+      <video
+        ref={videoRef}
+        muted
+        playsInline
+        preload="auto"
+        style={{
+          position:  'absolute',
+          inset:     0,
+          width:     '100%',
+          height:    '100%',
+          objectFit: 'contain',
+          display:   'block',
+        }}
+      >
+        <source src="/videos/seed.mp4" type="video/mp4" />
+      </video>
+
+      {/* ── LEFT panel — absolutely centred on left side ── */}
       <div style={{
-        width:               '100%',
-        display:             'grid',
-        gridTemplateColumns: '1fr auto 1fr',
-        alignItems:          'stretch',
-        padding:             '0 clamp(32px, 5vw, 80px)',
-        position:            'relative',
-        zIndex:              5,
+        position: 'absolute',
+        left: 0, top: 0, bottom: 0,
+        width: 'clamp(240px, 28vw, 400px)',
+        zIndex: 5,
       }}>
-
-        {/* ── LEFT — phrases stack, all absolutely centred ── */}
-        <div style={{
-          position:    'relative',
-          paddingRight: 'clamp(24px, 3vw, 48px)',
-          display:     'flex',
-          alignItems:  'center',
-        }}>
-          {SLIDES.map(({ phrase, label }, i) => (
-            <div
-              key={i}
-              ref={el => leftRefs.current[i] = el}
-              style={{
-                position:       'absolute',
-                inset:          0,
-                display:        'flex',
-                flexDirection:  'column',
-                justifyContent: 'center',
-                paddingRight:   'clamp(24px, 3vw, 48px)',
-                opacity:        i === 0 ? 1 : 0,
-                transform:      i === 0 ? 'translateY(0px)' : 'translateY(32px)',
-              }}
-            >
-              <p style={{
-                fontFamily:    FF,
-                fontSize:      '0.6rem',
-                fontWeight:    600,
-                letterSpacing: '0.22em',
-                textTransform: 'uppercase',
-                color:         'var(--green)',
-                marginBottom:  'clamp(12px, 2vw, 20px)',
-                margin:        '0 0 clamp(12px, 2vw, 20px)',
-              }}>{label}</p>
-              <h2 style={{
-                fontFamily:    FF,
-                fontWeight:    800,
-                fontSize:      'clamp(3rem, 6vw, 8rem)',
-                letterSpacing: '-0.045em',
-                lineHeight:    0.92,
-                color:         'var(--dark)',
-                margin:        0,
-                whiteSpace:    'pre-line',
-              }}>
-                {phrase.split('\n').map((word, wi) => (
-                  <span key={wi} style={{
-                    display: 'block',
-                    color:   wi === 1 ? 'var(--green)' : 'var(--dark)',
-                  }}>{word}</span>
-                ))}
-              </h2>
-            </div>
-          ))}
-        </div>
-
-        {/* ── CENTER — seed video, centred within its stretched cell ── */}
-        <div style={{
-          width:        'clamp(180px, 24vw, 360px)',
-          aspectRatio:  '9 / 16',
-          maxHeight:    '72vh',
-          alignSelf:    'center',
-          position:     'relative',
-          borderRadius: 24,
-          overflow:     'hidden',
-          boxShadow:    '0 24px 80px rgba(20,16,8,0.12)',
-          flexShrink:   0,
-        }}>
-          <video
-            ref={videoRef}
-            muted
-            playsInline
-            preload="auto"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        {SLIDES.map(({ phrase, label }, i) => (
+          <div
+            key={i}
+            ref={el => leftRefs.current[i] = el}
+            style={{
+              position:       'absolute',
+              inset:          0,
+              display:        'flex',
+              flexDirection:  'column',
+              justifyContent: 'center',
+              padding:        'clamp(28px, 4vw, 60px)',
+              opacity:        i === 0 ? 1 : 0,
+              transform:      i === 0 ? 'translateY(0px)' : 'translateY(32px)',
+            }}
           >
-            <source src="/videos/seed.mp4" type="video/mp4" />
-          </video>
-        </div>
+            <p style={{
+              fontFamily:    FF,
+              fontSize:      '0.6rem',
+              fontWeight:    600,
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+              color:         'var(--green)',
+              margin:        '0 0 clamp(12px, 1.8vw, 20px)',
+            }}>{label}</p>
+            <h2 style={{
+              fontFamily:    FF,
+              fontWeight:    800,
+              fontSize:      'clamp(3rem, 6vw, 8rem)',
+              letterSpacing: '-0.045em',
+              lineHeight:    0.92,
+              color:         'var(--dark)',
+              margin:        0,
+              whiteSpace:    'pre-line',
+            }}>
+              {phrase.split('\n').map((word, wi) => (
+                <span key={wi} style={{
+                  display: 'block',
+                  color:   wi === 1 ? 'var(--green)' : 'var(--dark)',
+                }}>{word}</span>
+              ))}
+            </h2>
+          </div>
+        ))}
+      </div>
 
-        {/* ── RIGHT — descriptions stack, all absolutely centred ── */}
-        <div style={{
-          position:   'relative',
-          paddingLeft: 'clamp(24px, 3vw, 48px)',
-          display:    'flex',
-          alignItems: 'center',
-        }}>
-          {SLIDES.map(({ desc, stat, statLabel }, i) => (
-            <div
-              key={i}
-              ref={el => rightRefs.current[i] = el}
-              style={{
-                position:       'absolute',
-                inset:          0,
-                display:        'flex',
-                flexDirection:  'column',
-                justifyContent: 'center',
-                paddingLeft:    'clamp(24px, 3vw, 48px)',
-                opacity:        i === 0 ? 1 : 0,
-                transform:      i === 0 ? 'translateY(0px)' : 'translateY(24px)',
-              }}
-            >
-              <div style={{ marginBottom: 'clamp(20px, 3vw, 32px)' }}>
-                <p style={{
-                  fontFamily:    FF,
-                  fontSize:      'clamp(2.2rem, 4vw, 5rem)',
-                  fontWeight:    800,
-                  letterSpacing: '-0.04em',
-                  lineHeight:    1,
-                  color:         'var(--dark)',
-                  margin:        '0 0 4px',
-                }}>{stat}</p>
-                <p style={{
-                  fontFamily:    FF,
-                  fontSize:      '0.7rem',
-                  fontWeight:    500,
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                  color:         'rgba(20,16,8,0.4)',
-                  margin:        0,
-                }}>{statLabel}</p>
-              </div>
-
-              <div ref={i === 0 ? lineRef : null} style={{
-                width:        48,
-                height:       1,
-                background:   'var(--dark)',
-                opacity:      0.12,
-                marginBottom: 'clamp(20px, 3vw, 32px)',
-              }} />
-
+      {/* ── RIGHT panel — absolutely centred on right side ── */}
+      <div style={{
+        position: 'absolute',
+        right: 0, top: 0, bottom: 0,
+        width: 'clamp(240px, 28vw, 400px)',
+        zIndex: 5,
+      }}>
+        {SLIDES.map(({ desc, stat, statLabel }, i) => (
+          <div
+            key={i}
+            ref={el => rightRefs.current[i] = el}
+            style={{
+              position:       'absolute',
+              inset:          0,
+              display:        'flex',
+              flexDirection:  'column',
+              justifyContent: 'center',
+              padding:        'clamp(28px, 4vw, 60px)',
+              opacity:        i === 0 ? 1 : 0,
+              transform:      i === 0 ? 'translateY(0px)' : 'translateY(24px)',
+            }}
+          >
+            {/* Stat number */}
+            <div style={{ marginBottom: 'clamp(16px, 2.5vw, 28px)' }}>
               <p style={{
-                fontFamily: FF,
-                fontSize:   'clamp(0.88rem, 1.25vw, 1.05rem)',
-                fontWeight: 300,
-                lineHeight: 1.8,
-                color:      'rgba(20,16,8,0.6)',
-                margin:     '0 0 clamp(28px, 4vw, 44px)',
-                maxWidth:   360,
-              }}>{desc}</p>
-
-              <a href="http://nidhiseed.com" target="_blank" rel="noopener noreferrer"
-                style={{
-                  display:        'inline-flex',
-                  alignItems:     'center',
-                  gap:            10,
-                  fontFamily:     FF,
-                  fontSize:       '0.72rem',
-                  fontWeight:     700,
-                  letterSpacing:  '0.1em',
-                  textTransform:  'uppercase',
-                  color:          'var(--dark)',
-                  textDecoration: 'none',
-                  transition:     'gap 0.2s',
-                  alignSelf:      'flex-start',
-                }}
-                onMouseEnter={e => e.currentTarget.style.gap = '18px'}
-                onMouseLeave={e => e.currentTarget.style.gap = '10px'}
-              >
-                <span>Learn More</span>
-                <span style={{
-                  width: 32, height: 32, borderRadius: '50%',
-                  border: '1.5px solid rgba(20,16,8,0.2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
-                  <svg width="11" height="11" viewBox="0 0 13 13" fill="none">
-                    <path d="M2 7h9M7.5 3l3.5 4-3.5 4" stroke="#141008" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </span>
-              </a>
+                fontFamily:    FF,
+                fontSize:      'clamp(2rem, 4vw, 5rem)',
+                fontWeight:    800,
+                letterSpacing: '-0.04em',
+                lineHeight:    1,
+                color:         'var(--dark)',
+                margin:        '0 0 4px',
+              }}>{stat}</p>
+              <p style={{
+                fontFamily:    FF,
+                fontSize:      '0.68rem',
+                fontWeight:    500,
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                color:         'rgba(20,16,8,0.38)',
+                margin:        0,
+              }}>{statLabel}</p>
             </div>
-          ))}
-        </div>
+
+            {/* Divider */}
+            <div ref={i === 0 ? lineRef : null} style={{
+              width:        44,
+              height:       1,
+              background:   'var(--dark)',
+              opacity:      0.12,
+              marginBottom: 'clamp(16px, 2.5vw, 28px)',
+            }} />
+
+            {/* Description */}
+            <p style={{
+              fontFamily: FF,
+              fontSize:   'clamp(0.85rem, 1.2vw, 1rem)',
+              fontWeight: 300,
+              lineHeight: 1.8,
+              color:      'rgba(20,16,8,0.58)',
+              margin:     '0 0 clamp(24px, 3.5vw, 40px)',
+              maxWidth:   340,
+            }}>{desc}</p>
+
+            {/* Link */}
+            <a href="http://nidhiseed.com" target="_blank" rel="noopener noreferrer"
+              style={{
+                display:        'inline-flex',
+                alignItems:     'center',
+                gap:            10,
+                fontFamily:     FF,
+                fontSize:       '0.7rem',
+                fontWeight:     700,
+                letterSpacing:  '0.1em',
+                textTransform:  'uppercase',
+                color:          'var(--dark)',
+                textDecoration: 'none',
+                transition:     'gap 0.2s',
+                alignSelf:      'flex-start',
+              }}
+              onMouseEnter={e => e.currentTarget.style.gap = '18px'}
+              onMouseLeave={e => e.currentTarget.style.gap = '10px'}
+            >
+              <span>Learn More</span>
+              <span style={{
+                width: 30, height: 30, borderRadius: '50%',
+                border: '1.5px solid rgba(20,16,8,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <svg width="10" height="10" viewBox="0 0 13 13" fill="none">
+                  <path d="M2 7h9M7.5 3l3.5 4-3.5 4" stroke="#141008" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
+            </a>
+          </div>
+        ))}
       </div>
 
       {/* Progress dots */}
@@ -308,9 +298,12 @@ export function SeedUSP() {
         zIndex:    20,
       }}>
         {SLIDES.map((_, i) => (
-          <div key={i} style={{
-            width: 6, height: 6, borderRadius: '50%',
-            background: 'rgba(20,16,8,0.2)',
+          <div key={i} ref={el => dotRefs.current[i] = el} style={{
+            width:      i === 0 ? 20 : 6,
+            height:     6,
+            borderRadius: 999,
+            background: i === 0 ? 'rgba(20,16,8,0.55)' : 'rgba(20,16,8,0.18)',
+            transition: 'width 0.35s ease, background 0.35s ease',
           }} />
         ))}
       </div>

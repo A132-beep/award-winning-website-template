@@ -37,6 +37,7 @@ const CATS = [
 export function ShopCategories() {
   const sectionRef = useRef(null)
   const trackRef   = useRef(null)
+  const panelRef   = useRef(null)
 
   useEffect(() => {
     const section = sectionRef.current
@@ -49,9 +50,9 @@ export function ShopCategories() {
         scrollTrigger: { trigger: section, start: 'top 75%' } }
     )
 
-    // Horizontal scroll — track moves left while section is pinned
+    // Horizontal scroll — stop when last card reaches the right viewport edge
     gsap.to(track, {
-      x: () => -(track.scrollWidth - window.innerWidth * 0.40),
+      x: () => -(track.scrollWidth - window.innerWidth + panelRef.current.offsetWidth + 40),
       ease: 'none',
       scrollTrigger: {
         trigger: section,
@@ -87,7 +88,7 @@ export function ShopCategories() {
       }}
     >
       {/* ── LEFT PANEL — fixed text ── */}
-      <div style={{
+      <div ref={panelRef} style={{
         flexShrink: 0,
         width: 'clamp(260px, 30vw, 420px)',
         padding: 'clamp(32px, 5vw, 72px)',
@@ -154,7 +155,6 @@ export function ShopCategories() {
           alignItems: 'center',
           gap: 12,
           paddingRight: 80,
-          willChange: 'transform',
           flexShrink: 0,
         }}
       >

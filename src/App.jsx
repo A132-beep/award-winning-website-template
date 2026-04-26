@@ -4,7 +4,6 @@ import { Navbar }          from './components/Navbar'
 import { Hero }            from './components/Hero'
 import { TrustBar }        from './components/TrustBar'
 import { SeedUSP }         from './components/SeedUSP'
-import { Stats }           from './components/Stats'
 import { StoryStrip }      from './components/StoryStrip'
 import { ShopCategories }  from './components/ShopCategories'
 import { GrowTool }        from './components/GrowTool'
@@ -24,7 +23,6 @@ function App() {
         <Hero />
         <TrustBar />
         <SeedUSP />
-        <Stats />
         <StoryStrip />
         <ShopCategories />
         <GrowTool />
