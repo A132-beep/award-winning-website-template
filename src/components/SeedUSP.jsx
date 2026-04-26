@@ -41,6 +41,7 @@ export function SeedUSP() {
   const rightRefs  = useRef([null, null, null])
   const lineRef    = useRef(null)
   const dotRefs    = useRef([null, null, null])
+  const stRef      = useRef(null)
 
   useEffect(() => {
     const video = videoRef.current
@@ -60,13 +61,14 @@ export function SeedUSP() {
       el.style.transform = i === 0 ? 'translateY(0px)' : 'translateY(24px)'
     })
 
-    ScrollTrigger.create({
+    stRef.current = ScrollTrigger.create({
       trigger:       sectionRef.current,
       start:         'top top',
       end:           '+=400%',
       pin:           true,
       anticipatePin: 1,
       scrub:         true,
+      invalidateOnRefresh: true,
 
       onUpdate({ progress: p }) {
         /* ── Video seek ── */
@@ -105,7 +107,10 @@ export function SeedUSP() {
       },
     })
 
-    return () => video.removeEventListener('canplay', onReady)
+    return () => {
+      video.removeEventListener('canplay', onReady)
+      stRef.current?.kill()
+    }
   }, [])
 
   return (
@@ -135,6 +140,46 @@ export function SeedUSP() {
       >
         <source src="/videos/seed.mp4" type="video/mp4" />
       </video>
+
+      {/* ── Rotating orbit ring around seed ── */}
+      <div style={{
+        position:      'absolute',
+        left:          '50%',
+        top:           '50%',
+        transform:     'translate(-50%, -50%)',
+        width:         'clamp(140px, 14vw, 220px)',
+        height:        'clamp(280px, 46vh, 500px)',
+        pointerEvents: 'none',
+        zIndex:        3,
+      }}>
+        <div style={{
+          width:        '100%',
+          height:       '100%',
+          borderRadius: '50%',
+          border:       '1px solid rgba(20,16,8,0.13)',
+          animation:    'seedOrbit 16s linear infinite',
+        }} />
+      </div>
+
+      {/* ── Left gradient blend ── */}
+      <div style={{
+        position:       'absolute',
+        top: 0, bottom: 0, left: 0,
+        width:          'clamp(240px, 32vw, 460px)',
+        background:     'linear-gradient(to right, #F5EFE4 45%, transparent 100%)',
+        zIndex:         4,
+        pointerEvents:  'none',
+      }} />
+
+      {/* ── Right gradient blend ── */}
+      <div style={{
+        position:       'absolute',
+        top: 0, bottom: 0, right: 0,
+        width:          'clamp(240px, 32vw, 460px)',
+        background:     'linear-gradient(to left, #F5EFE4 45%, transparent 100%)',
+        zIndex:         4,
+        pointerEvents:  'none',
+      }} />
 
       {/* ── LEFT panel — absolutely centred on left side ── */}
       <div style={{

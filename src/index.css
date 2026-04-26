@@ -96,3 +96,9 @@ a, button { cursor: none; }
 /* Clip-path utility */
 .clip-hidden { clip-path: inset(100% 0 0 0); }
 .clip-visible { clip-path: inset(0% 0 0 0); }
+
+/* SeedUSP rotating ring */
+@keyframes seedOrbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

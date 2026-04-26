@@ -1,3 +1,5 @@
+import { useEffect }       from 'react'
+import { ScrollTrigger }   from './lib/gsap'
 import { SmoothScroll }    from './components/SmoothScroll'
 import { Cursor }          from './components/Cursor'
 import { Navbar }          from './components/Navbar'
@@ -15,6 +17,12 @@ import { Reviews }         from './components/Reviews'
 import { Footer }          from './components/Footer'
 
 function App() {
+  useEffect(() => {
+    // Give all child effects time to register their ScrollTriggers, then recalculate spacers
+    const id = setTimeout(() => ScrollTrigger.refresh(), 600)
+    return () => clearTimeout(id)
+  }, [])
+
   return (
     <SmoothScroll>
       <Cursor />

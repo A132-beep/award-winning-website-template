@@ -6,13 +6,14 @@ const TOTAL = 34
 const FF    = "'Plus Jakarta Sans', system-ui, sans-serif"
 
 export function Hero() {
-  const sectionRef = useRef(null)
-  const canvasRef  = useRef(null)
-  const textRef    = useRef(null)
-  const ctaRef     = useRef(null)
-  const loaderRef  = useRef(null)
-  const frameIdx   = useRef(0)
-  const stRef      = useRef(null)
+  const sectionRef   = useRef(null)
+  const canvasRef    = useRef(null)
+  const textRef      = useRef(null)
+  const ctaRef       = useRef(null)
+  const loaderRef    = useRef(null)
+  const endBlendRef  = useRef(null)
+  const frameIdx     = useRef(0)
+  const stRef        = useRef(null)
 
   const { drawFrame, loaded, ready } = useImageSequence({
     basePath: '/sequence/frame-',
@@ -71,6 +72,7 @@ export function Hero() {
       pin:     true,
       anticipatePin: 1,
       scrub:   true,
+      invalidateOnRefresh: true,
       onUpdate(self) {
         const p   = self.progress
         const idx = Math.min(Math.round(p * (TOTAL - 1)), TOTAL - 1)
@@ -79,13 +81,31 @@ export function Hero() {
         const alpha = p < 0.20 ? 1 - p / 0.20 : 0
         if (textRef.current) textRef.current.style.opacity = alpha
         if (ctaRef.current)  ctaRef.current.style.opacity  = alpha
+
+        // Fade entire hero to cream in the last 18% of scroll — smooth blend into next section
+        if (endBlendRef.current) {
+          const endAlpha = p > 0.82 ? (p - 0.82) / 0.18 : 0
+          endBlendRef.current.style.opacity = String(endAlpha)
+        }
       },
     })
 
     const onResize = () => { sizeCanvas(); paintFrame(frameIdx.current) }
     window.addEventListener('resize', onResize)
 
+    // Safety fallback: hide loader after 5s even if images stall
+    const loaderTimeout = setTimeout(() => {
+      if (loaderRef.current) {
+        gsap.to(loaderRef.current, {
+          opacity: 0, duration: 0.4,
+          onComplete: () => { if (loaderRef.current) loaderRef.current.style.display = 'none' },
+        })
+      }
+      stRef.current?.refresh()
+    }, 5000)
+
     return () => {
+      clearTimeout(loaderTimeout)
       intro.kill()
       stRef.current?.kill()
       window.removeEventListener('resize', onResize)
@@ -99,9 +119,11 @@ export function Hero() {
     paintFrame(frameIdx.current)
     gsap.to(loaderRef.current, {
       opacity: 0, duration: 0.5,
-      onComplete: () => { if (loaderRef.current) loaderRef.current.style.display = 'none' },
+      onComplete: () => {
+        if (loaderRef.current) loaderRef.current.style.display = 'none'
+        ScrollTrigger.refresh()  // recalculate all spacers after loader gone
+      },
     })
-    stRef.current?.refresh()
   }, [ready])
 
   const pct = Math.round((loaded / TOTAL) * 100)
@@ -139,6 +161,12 @@ export function Hero() {
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2,
         background: 'linear-gradient(to top, rgba(20,16,8,0.65) 0%, rgba(20,16,8,0.1) 45%, transparent 70%)',
+      }} />
+
+      {/* Cream end-blend — fades in as hero scroll approaches completion */}
+      <div ref={endBlendRef} style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'var(--cream)', zIndex: 20, opacity: 0,
       }} />
 
       {/* Centred headline */}
